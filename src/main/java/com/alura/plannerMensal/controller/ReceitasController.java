@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import javax.validation.Valid;
 
 import org.modelmapper.ModelMapper;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.alura.plannerMensal.controller.dto.ReceitaDTO;
@@ -25,18 +27,29 @@ import com.alura.plannerMensal.repository.ReceitaRepository;
 
 @RestController
 public class ReceitasController {
-    
+
     @Autowired
     private ReceitaRepository receitaRepository;
 
     @Autowired
     ModelMapper modelMapper;
 
+    @GetMapping("/receitas/{ano}/{mes}")
+    ResponseEntity<?> getReceita(@PathVariable("ano") Integer ano, @PathVariable("mes") Integer mes) {
+        try {
+            List<Receita> receitas = receitaRepository.findByYearAndMonth(ano, mes);
+            List<ReceitaDTO> receitasDTO = this.listEntityToDto(receitas);
+            return ResponseEntity.ok().body(receitasDTO);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/receitas/{id}")
     ResponseEntity<?> getReceita(@PathVariable("id") Long id) {
         try {
             Optional<Receita> receita = (receitaRepository.findById(id));
-            if (receita.isPresent()){
+            if (receita.isPresent()) {
                 ReceitaDTO receitaDTO = this.entityToDTO(receita.get());
                 return new ResponseEntity<>(receitaDTO, HttpStatus.OK);
             } else {
@@ -47,43 +60,32 @@ public class ReceitasController {
         }
     }
 
-    // @GetMapping("/receitas")
-    // ResponseEntity<?> getAll(@RequestParam("descricao") String valorDescricao){
-    //     try {
-    //         if (valorDescricao == null){
-    //             List<Receita> receitas = (List<Receita>) receitaRepository.findAll();
-    //             return ResponseEntity.ok().body(this.listEntityToDto(receitas));
-    //         } else {
-
-    //         }                
-    //     } catch (Exception e) {
-    //         return ResponseEntity.internalServerError().body(e.getMessage());
-    //     }        
-    // }
-
-    // @GetMapping("/receitas")
-    // ResponseEntity<?> getReceitasByDescricao(@RequestParam("descricao") String valorDescricao){
-    //     try {
-    //         List<Receita> receitas = (List<Receita>) receitaRepository.findByDescricao(valorDescricao);
-    //         return ResponseEntity.ok().body(this.listEntityToDto(receitas));
-    //     } catch (Exception e) {
-    //         return ResponseEntity.internalServerError().body(e.getMessage());
-    //     }
-    // }
-    
+    @GetMapping("/receitas")
+    ResponseEntity<?> getAll(@RequestParam Optional<String> descricao) {
+        try {
+            List<Receita> receitas;
+            if (descricao.isPresent())
+                receitas = (List<Receita>) receitaRepository.findByDescricao(descricao.get());
+            else
+                receitas = (List<Receita>) receitaRepository.findAll();
+            return ResponseEntity.ok().body(this.listEntityToDto(receitas));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }    
 
     @PostMapping("/receitas")
-    ResponseEntity<?> addReceita(@Valid @RequestBody ReceitaDTO receitaDTO){
+    ResponseEntity<?> addReceita(@Valid @RequestBody ReceitaDTO receitaDTO) {
         try {
             receitaRepository.save(this.dtoToEntity(receitaDTO));
-            return new ResponseEntity<>(HttpStatus.OK);    
+            return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @PutMapping("/receitas/{id}")
-    ResponseEntity<?> updateReceita(@Valid @RequestBody ReceitaDTO receitaDTO, @PathVariable("id") Long id){
+    ResponseEntity<?> updateReceita(@Valid @RequestBody ReceitaDTO receitaDTO, @PathVariable("id") Long id) {
         try {
             return receitaRepository.findById(id).map(record -> {
                 record.setDescricao(receitaDTO.getDescricao());

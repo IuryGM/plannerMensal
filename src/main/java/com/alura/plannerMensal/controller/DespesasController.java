@@ -18,14 +18,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.alura.plannerMensal.controller.dto.DespesaDTO;
 import com.alura.plannerMensal.entity.Despesa;
 import com.alura.plannerMensal.repository.DespesaRepository;
 
 @RestController
-public class DespesasController{
-    
+public class DespesasController {
+
     @Autowired
     DespesaRepository despesaRepository;
 
@@ -33,28 +34,48 @@ public class DespesasController{
     ModelMapper modelMapper;
 
     @GetMapping("/despesas")
-    ResponseEntity<?> getAll(){
-        List<Despesa> despesas = (List<Despesa>) despesaRepository.findAll();
-        return ResponseEntity.ok().body(this.listEntityToDto(despesas));
+    ResponseEntity<?> getAll(@RequestParam Optional<String> descricao) {
+        try {
+            List<Despesa> despesas;
+
+            if (descricao.isPresent())
+                despesas = (List<Despesa>) despesaRepository.findByDescricao(descricao.get());
+            else
+                despesas = (List<Despesa>) despesaRepository.findAll();
+
+            return ResponseEntity.ok().body(this.listEntityToDto(despesas));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
     }
 
     @GetMapping("/despesas/{id}")
-    ResponseEntity<?> getById(@PathVariable("id") Long id){
+    ResponseEntity<?> getById(@PathVariable("id") Long id) {
         try {
             Optional<Despesa> despesa = (despesaRepository.findById(id));
-            if (despesa.isPresent()){
+            if (despesa.isPresent()) {
                 DespesaDTO despesaDTO = this.entityToDTO(despesa.get());
                 return ResponseEntity.ok().body(despesaDTO);
             } else {
                 return ResponseEntity.ok().body("Despesa não existe");
-            }            
+            }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/despesas/{ano}/{mes}")
+    ResponseEntity<?> getByYearAndMonth(@PathVariable("ano") Integer ano, @PathVariable("mes") Integer mes){
+        try {
+            List<Despesa> despesas = despesaRepository.findByYearAndMonth(ano, mes);
+            return ResponseEntity.ok().body(despesas);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
 
     @PostMapping("/despesas")
-    ResponseEntity<?> addDespesa(@Valid @RequestBody DespesaDTO despesa){
+    ResponseEntity<?> addDespesa(@Valid @RequestBody DespesaDTO despesa) {
         try {
             despesaRepository.save(this.dtoToEntity(despesa));
             return ResponseEntity.ok().body("Dados adicionados");
@@ -64,7 +85,7 @@ public class DespesasController{
     }
 
     @PutMapping("/despesas/{id}")
-    ResponseEntity<?> updateDespesa(@Valid @RequestBody DespesaDTO despesaDTO, @PathVariable("id") Long id){
+    ResponseEntity<?> updateDespesa(@Valid @RequestBody DespesaDTO despesaDTO, @PathVariable("id") Long id) {
         try {
             return despesaRepository.findById(id).map(record -> {
                 record.setDescricao(despesaDTO.getDescricao());
@@ -77,11 +98,11 @@ public class DespesasController{
             }).orElse(ResponseEntity.notFound().build());
         } catch (HttpMessageConversionException e) {
             return ResponseEntity.internalServerError().body(e.getMessage());
-        }        
+        }
     }
 
     @DeleteMapping("/despesas/{id}")
-    ResponseEntity<?> deleteDespesa(@PathVariable("id") Long id){
+    ResponseEntity<?> deleteDespesa(@PathVariable("id") Long id) {
         try {
             despesaRepository.deleteById(id);
             return ResponseEntity.ok().body("");
